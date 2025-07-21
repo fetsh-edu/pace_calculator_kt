@@ -1,0 +1,55 @@
+# .github/workflows/ci.yml
+
+name: Android CI
+
+# This workflow runs on every push to the 'main' branch
+# and on every pull request that targets the 'main' branch.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    # Use the latest version of Ubuntu as the runner
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up the JDK. Even with toolchains, Gradle itself needs a JDK to run.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Cache Gradle dependencies and wrappers to speed up the build
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 4. Make the gradlew script executable
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 5. Run the linter to check for style issues
+      - name: Run Ktlint
+        run: ./gradlew ktlintCheck
+
+      # 6. Run unit tests
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      # 7. Build the debug APK to ensure the app compiles
+      - name: Build debug APK
+        run: ./gradlew assembleDebug

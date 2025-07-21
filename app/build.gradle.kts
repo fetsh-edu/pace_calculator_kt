@@ -4,10 +4,11 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.ktlint)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -44,7 +45,7 @@ android {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName("release")
         }
@@ -64,7 +65,6 @@ android {
         metricsDestination = layout.buildDirectory.dir("compose_compiler_metrics")
     }
 }
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -100,5 +100,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 ksp {
-    arg("hilt.codeGeneration.outputPath", project.layout.buildDirectory.get().asFile.resolve("generated/ksp/main/kotlin").absolutePath)
+    arg(
+        "hilt.codeGeneration.outputPath",
+        project.layout.buildDirectory
+            .get()
+            .asFile
+            .resolve("generated/ksp/main/kotlin")
+            .absolutePath,
+    )
 }
