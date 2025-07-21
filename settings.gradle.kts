@@ -1,3 +1,4 @@
+
 pluginManagement {
     repositories {
         google {
@@ -21,4 +22,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pace Calculator"
 include(":app")
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
  
