@@ -6,7 +6,6 @@ name: Android CI
 # and on every pull request that targets the 'main' branch.
 on:
   push:
-    branches: [ "main" ]
     paths:
       - 'app/**'
       - 'build.gradle.kts'
@@ -66,7 +65,14 @@ jobs:
 
       # 6. Run unit tests
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/build/reports/tests/'
 
       # 7. Build the debug APK to ensure the app compiles
       - name: Build debug APK
