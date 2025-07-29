@@ -64,6 +64,11 @@ android {
         reportsDestination = layout.buildDirectory.dir("compose_compiler_reports")
         metricsDestination = layout.buildDirectory.dir("compose_compiler_metrics")
     }
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
+    }
 }
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -82,7 +87,10 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
 
-    testImplementation(libs.junit)
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+
+    testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
