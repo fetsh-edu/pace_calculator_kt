@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import me.fetsh.pacecalculator.ui.calculator.PaceCalculatorScreen
+import me.fetsh.pacecalculator.ui.Screen
 import me.fetsh.pacecalculator.ui.theme.PaceCalculatorTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    PaceCalculatorScreen()
+                    Screen()
                 }
             }
         }

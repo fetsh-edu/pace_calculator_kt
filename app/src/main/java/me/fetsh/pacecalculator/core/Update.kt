@@ -1,4 +1,8 @@
-package me.fetsh.pacecalculator.ui.calculator
+package me.fetsh.pacecalculator.core
+
+typealias Effects = List<Effect>
+
+val noEffects: Effects = emptyList()
 
 /**
  * The core logic of the application. A pure function that takes the current
@@ -11,13 +15,15 @@ package me.fetsh.pacecalculator.ui.calculator
 fun update(
     msg: Msg,
     model: Model,
-): Pair<Model, Set<Effect>> =
+): Pair<Model, Effects> =
     when (msg) {
         is Msg.DistanceChanged -> {
-            model.copy(distance = msg.value) to emptySet()
+            model.copy(distanceExtended = msg.value) to noEffects
         }
         is Msg.TimeChanged -> {
-            model.copy(time = msg.value) to emptySet()
+            model.copy(time = msg.value) to noEffects
         }
-        else -> model to emptySet() // TODO: Implement other messages
+        is Msg.PaceChanged -> {
+            model.copy(pace = msg.value) to noEffects
+        }
     }
