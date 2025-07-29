@@ -106,13 +106,10 @@ class KinematicsTest {
     fun `withTime when solving for Pace updates time and recalculates pace, distance remains`() {
         val initialKinematics = Kinematics.INIT // Marathon, 3h, TimePrecision.Seconds
         val marathonDistance = NamedDistance.Marathon
-        val marathonDistanceMm = NamedDistance.Marathon.distance.millimeters // Get actual marathon distance
 
         val newTime = Time(4 * 60 * 60 * 1000L) // Example: Change time to 4 hours
 
         val updatedKinematics = initialKinematics.withTime(newTime, TimeSolveFor.Pace)
-
-        println("newTime is ${updatedKinematics.time.roundTo(updatedKinematics.precision).toParts()}")
         // Assertions
         val idealPaceFromIntendedTime = Pace.of(newTime, marathonDistance.distance)
         val expectedRoundedPace = idealPaceFromIntendedTime.roundTo(initialKinematics.precision)
@@ -202,6 +199,4 @@ class KinematicsTest {
 
         assertEquals(newSpeed, updatedKinematics.speed, "Speed should be updated")
     }
-
-
 }

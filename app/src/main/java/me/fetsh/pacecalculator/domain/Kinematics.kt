@@ -70,5 +70,4 @@ data class Kinematics(
         speed: Speed,
         solveFor: PaceSolveFor,
     ): Kinematics = withPace(Pace.of(speed), solveFor)
-
 }

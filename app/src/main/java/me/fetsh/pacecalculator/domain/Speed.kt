@@ -2,7 +2,7 @@ package me.fetsh.pacecalculator.domain
 
 enum class SpeedUnit {
     KmpH,
-    MpH
+    MpH,
 }
 
 @JvmInline
