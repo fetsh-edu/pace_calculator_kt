@@ -75,6 +75,8 @@ value class Pace(
         return Speed(speedInMetersPerSecond)
     }
 
+    fun toTimeParts(): TimeParts = Time.of(this, Distance.of(1.0, DistanceUnit.Kilometer)).toParts()
+
     /**
      * Rounds this pace to a specific [TimePrecision] using given [mode].
      */
