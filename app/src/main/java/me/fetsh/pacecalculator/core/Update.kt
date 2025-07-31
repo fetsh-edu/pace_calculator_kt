@@ -1,5 +1,9 @@
 package me.fetsh.pacecalculator.core
 
+import me.fetsh.pacecalculator.domain.DistanceSolveFor
+import me.fetsh.pacecalculator.domain.PaceSolveFor
+import me.fetsh.pacecalculator.domain.TimeSolveFor
+
 typealias Effects = List<Effect>
 
 val noEffects: Effects = emptyList()
@@ -18,12 +22,25 @@ fun update(
 ): Pair<Model, Effects> =
     when (msg) {
         is Msg.DistanceChanged -> {
-            model.copy(distanceExtended = msg.value) to noEffects
+            model.copy(
+                kinematics = model.kinematics.withDistance(msg.value, DistanceSolveFor.Time),
+            ) to noEffects
         }
         is Msg.TimeChanged -> {
-            model.copy(time = msg.value) to noEffects
+            model.copy(
+                kinematics = model.kinematics.withTime(msg.value, TimeSolveFor.Pace),
+            ) to noEffects
         }
         is Msg.PaceChanged -> {
-            model.copy(pace = msg.value) to noEffects
+            model.copy(
+                kinematics = model.kinematics.withPace(msg.value, PaceSolveFor.Time),
+            ) to noEffects
+        }
+
+        is Msg.TestEffectRequested -> model to listOf(DelayEffect(msg.message, 2000))
+        is Msg.SpeedChanged -> {
+            model.copy(
+                kinematics = model.kinematics.withSpeed(msg.value, PaceSolveFor.Time),
+            ) to noEffects
         }
     }
