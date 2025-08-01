@@ -2,6 +2,9 @@ package me.fetsh.pacecalculator.domain
 
 import com.google.common.truth.Truth
 import com.google.common.truth.Truth.assertThat
+import me.fetsh.pacecalculator.normalizedEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import java.math.BigDecimal
 import kotlin.test.Test
 
 class DistanceExtendedTest {
@@ -15,14 +18,14 @@ class DistanceExtendedTest {
     @Test
     fun `preset Marathon has correct distance`() {
         val m = NamedDistance.Marathon
-        assertThat(m.distance.millimeters).isEqualTo(42_195_000L)
+        assertTrue(m.distance.meters.normalizedEquals(BigDecimal.valueOf(42195)))
         Truth.assertThat(m.code).isEqualTo("marathon")
     }
 
     @Test
     fun `preset HalfMarathon has correct distance`() {
         val hm = NamedDistance.HalfMarathon
-        assertThat(hm.distance.millimeters).isEqualTo(21_097_500L)
+        assertTrue(hm.distance.meters.normalizedEquals(BigDecimal("21097.5")))
         Truth.assertThat(hm.code).isEqualTo("half_marathon")
     }
 
@@ -67,7 +70,7 @@ class DistanceExtendedTest {
         val km = items[0].distance
         val marathon = items[1].distance
 
-        assertThat(km.millimeters).isEqualTo(1_000_000L)
-        assertThat(marathon.millimeters).isEqualTo(42_195_000L)
+        assertTrue(km.meters.normalizedEquals(BigDecimal("1000")))
+        assertTrue(marathon.meters.normalizedEquals(BigDecimal("42195")))
     }
 }

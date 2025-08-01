@@ -1,12 +1,17 @@
 package me.fetsh.pacecalculator.domain
 
+import me.fetsh.pacecalculator.utils.UnitConversions
 import java.math.BigDecimal
 import java.math.RoundingMode
-import kotlin.math.pow
 
-private const val MILLIS_IN_SECOND = 1_000L
-private const val MILLIS_IN_MINUTE = 60_000L // 60 × 1 000
-private const val MILLIS_IN_HOUR = 3_600_000L // 60 × 60 × 1 000
+enum class TimePrecision(
+    val fractionalDigits: Int,
+) {
+    Seconds(0),
+    Deciseconds(1),
+    Centiseconds(2),
+    Milliseconds(3),
+}
 
 data class TimeParts(
     val hours: Int,
@@ -30,12 +35,11 @@ data class TimeParts(
             precision: TimePrecision,
         ): TimeParts {
             val maxFraction =
-                when (precision.fractionalDigits) {
-                    0 -> 0
-                    1 -> 9
-                    2 -> 99
-                    3 -> 999
-                    else -> error("Unsupported precision")
+                when (precision) {
+                    TimePrecision.Seconds -> 0
+                    TimePrecision.Deciseconds -> 9
+                    TimePrecision.Centiseconds -> 99
+                    TimePrecision.Milliseconds -> 999
                 }
             require(fraction in 0..maxFraction)
             val fractionAsMilliseconds =
@@ -51,56 +55,70 @@ data class TimeParts(
 }
 
 data class Time(
-    val milliseconds: Long,
-) {
+    val seconds: BigDecimal,
+) : BigDecimalBased {
     init {
-        require(milliseconds >= 0) { "Time cannot be negative" }
+        require(seconds > BigDecimal.ZERO) { "Time must be positive" }
     }
 
+    override fun getValue(): BigDecimal = seconds
+
+    override fun equals(other: Any?): Boolean = isSameValueAs(other)
+
+    override fun hashCode(): Int = normalizedHash()
+
+    val hoursP: Int get() = seconds.divide(UnitConversions.SECONDS_IN_HOUR, 0, RoundingMode.DOWN).toInt()
+    val minutesP: Int get() =
+        (
+            seconds.remainder(
+                UnitConversions.SECONDS_IN_HOUR,
+            )
+        ).divide(UnitConversions.SECONDS_IN_MINUTE, 0, RoundingMode.DOWN).toInt()
+    val secondsP: Int get() = seconds.remainder(UnitConversions.SECONDS_IN_MINUTE).setScale(0, RoundingMode.DOWN).toInt()
+    val millisecondsP: Int get() =
+        (
+            (
+                seconds.remainder(
+                    BigDecimal.ONE,
+                )
+            ).multiply(UnitConversions.MILLISECONDS_IN_SECOND)
+        ).setScale(0, RoundingMode.HALF_UP).toInt()
+
     companion object {
-        fun fromSeconds(seconds: Long): Time = Time(seconds * MILLIS_IN_SECOND)
+        fun fromSeconds(seconds: BigDecimal): Time = Time(seconds)
 
-        fun fromMinutes(minutes: Long): Time = Time(minutes * MILLIS_IN_MINUTE)
+        fun fromMinutes(minutes: BigDecimal): Time = Time(minutes.multiply(UnitConversions.SECONDS_IN_MINUTE))
 
-        fun of(parts: TimeParts): Time =
-            Time(parts.hours * MILLIS_IN_HOUR + parts.minutes * MILLIS_IN_MINUTE + parts.seconds * MILLIS_IN_SECOND + parts.milliseconds)
+        fun fromMinutes(minutes: Int): Time = fromMinutes(BigDecimal(minutes))
+
+        fun fromSeconds(minutes: Int): Time = fromSeconds(BigDecimal(minutes))
+
+        fun of(parts: TimeParts): Time {
+            val seconds =
+                BigDecimal(parts.hours)
+                    .multiply(UnitConversions.SECONDS_IN_HOUR)
+                    .add(BigDecimal(parts.minutes).multiply(UnitConversions.SECONDS_IN_MINUTE))
+                    .add(BigDecimal(parts.seconds))
+                    .add(BigDecimal(parts.milliseconds).divide(UnitConversions.MILLISECONDS_IN_SECOND, 6, RoundingMode.HALF_UP))
+            return Time(seconds)
+        }
 
         fun of(
             pace: Pace,
             distance: Distance,
-        ): Time {
-            val distanceInKilometers =
-                BigDecimal(distance.millimeters).divide(BigDecimal(MILLIMETERS_IN_KILOMETER), 9, RoundingMode.HALF_UP)
-
-            val totalMicroseconds =
-                BigDecimal(pace.microsecondsPerKilometer).multiply(distanceInKilometers)
-
-            val totalMilliseconds =
-                totalMicroseconds.divide(BigDecimal(1_000), 0, RoundingMode.HALF_UP).longValueExactSafe()
-
-            return Time(totalMilliseconds)
-        }
+        ): Time = Time(pace.secondsPerKilometer.multiply(distance.to(DistanceUnit.Kilometer)))
     }
 
     fun roundTo(
         precision: TimePrecision,
         mode: RoundingMode = RoundingMode.HALF_UP,
-    ): Time = roundMsToPrecision(milliseconds, precision, mode).let(::Time)
+    ): Time = Time(seconds.setScale(precision.fractionalDigits, mode))
 
-    fun multiply(
-        factor: BigDecimal,
-        mode: RoundingMode = RoundingMode.HALF_UP,
-    ): Time {
-        require(factor >= BigDecimal.ZERO) { "Factor must be non-negative" }
-        return Time(BigDecimal(milliseconds).multiply(factor).setScale(0, mode).longValueExactSafe())
-    }
+    fun multiply(factor: BigDecimal): Time = seconds.multiply(factor, UnitConversions.TIME_CALCULATION_PRECISION).let(::Time)
 
-    fun divide(
-        divisor: BigDecimal,
-        mode: RoundingMode = RoundingMode.HALF_UP,
-    ): Time {
+    fun divide(divisor: BigDecimal): Time {
         require(divisor != BigDecimal.ZERO) { "Divisor must not be zero" }
-        return Time(BigDecimal(milliseconds).divide(divisor, 0, mode).longValueExactSafe())
+        return seconds.divide(divisor, UnitConversions.TIME_CALCULATION_PRECISION).let(::Time)
     }
 
     /**
@@ -108,46 +126,5 @@ data class Time(
      *
      * The result is normalised so that `minutes` and `seconds` are in 0‥59.
      */
-    fun toParts(): TimeParts {
-        val hours = (milliseconds / MILLIS_IN_HOUR).toInt()
-        val minutes = ((milliseconds % MILLIS_IN_HOUR) / MILLIS_IN_MINUTE).toInt()
-        val seconds = ((milliseconds % MILLIS_IN_MINUTE) / MILLIS_IN_SECOND).toInt()
-        val millis = (milliseconds % MILLIS_IN_SECOND).toInt() // 0‥999, matches the precision
-
-        return TimeParts(hours, minutes, seconds, millis)
-    }
+    fun toParts(): TimeParts = TimeParts(hoursP, minutesP, secondsP, millisecondsP)
 }
-
-enum class TimePrecision(
-    val fractionalDigits: Int,
-) {
-    Seconds(0),
-    Deciseconds(1),
-    Centiseconds(2),
-    Milliseconds(3),
-}
-
-private fun roundMsToPrecision(
-    ms: Long,
-    precision: TimePrecision,
-    mode: RoundingMode,
-): Long {
-    if (precision == TimePrecision.Milliseconds) return ms
-    val fracDigits = precision.fractionalDigits // 0,1,2
-    val keepDigits = 3 - fracDigits // digits we keep in ms
-    val pow = pow10(keepDigits)
-    val bd = BigDecimal(ms).divide(BigDecimal(pow), 0, mode) // integer chunks
-    val result = bd.multiply(BigDecimal(pow))
-    return result.longValueExactSafe()
-}
-
-private fun pow10(exp: Int): Long =
-    when (exp) {
-        0 -> 1L
-        1 -> 10L
-        2 -> 100L
-        3 -> 1000L
-        else -> 10.0.pow(exp).toLong() // unlikely
-    }
-
-private fun Double.pow(exp: Int): Double = this.pow(exp.toDouble())

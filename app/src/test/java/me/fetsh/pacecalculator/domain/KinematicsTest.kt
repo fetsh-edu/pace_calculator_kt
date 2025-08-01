@@ -1,7 +1,10 @@
 package me.fetsh.pacecalculator.domain
 
+import me.fetsh.pacecalculator.normalizedEquals
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.math.BigDecimal
 
 class KinematicsTest {
     @Test
@@ -67,7 +70,8 @@ class KinematicsTest {
                 unit = PaceUnit.PerKilometre,
             )
         val kinematics = Kinematics.of(distance, time, TimePrecision.Seconds)
-        assertEquals(Time.of(TimeParts(3, 0, 2, 0)), kinematics.time.roundTo(kinematics.precision))
+        val expectedTime = Time.of(TimeParts(3, 0, 2, 0))
+        assertEquals(0, expectedTime.seconds.compareTo(kinematics.time.roundTo(kinematics.precision).seconds))
         assertEquals(pace, kinematics.pace.roundTo(TimePrecision.Milliseconds))
     }
 
@@ -76,7 +80,8 @@ class KinematicsTest {
         val kinematics = Kinematics.INIT
         val newPace = Pace.of(5, 0, 0, TimePrecision.Seconds, PaceUnit.PerKilometre)
         val newKinematics = kinematics.withPace(newPace, PaceSolveFor.Time)
-        assertEquals(Time.of(TimeParts(3, 30, 59, 0)), newKinematics.time.roundTo(kinematics.precision))
+        val expectedTime = Time.of(TimeParts(3, 30, 59, 0))
+        assertEquals(0, expectedTime.seconds.compareTo(newKinematics.time.roundTo(kinematics.precision).seconds))
     }
 
     @Test
@@ -94,10 +99,10 @@ class KinematicsTest {
         val expectedDistance = Distance.of(kinematics.time, newPace)
 
         assertEquals(newPace, newKinematics.pace)
-        assertEquals(kinematics.time, newKinematics.time)
+        assertEquals(0, kinematics.time.seconds.compareTo(newKinematics.time.seconds), "Time should remain unchanged")
         assertEquals(
-            expectedDistance.millimeters,
-            newKinematics.distance.distance.millimeters,
+            expectedDistance.meters,
+            newKinematics.distance.distance.meters,
             "Expected recomputed distance in millimeters to match",
         )
     }
@@ -107,7 +112,7 @@ class KinematicsTest {
         val initialKinematics = Kinematics.INIT // Marathon, 3h, TimePrecision.Seconds
         val marathonDistance = NamedDistance.Marathon
 
-        val newTime = Time(4 * 60 * 60 * 1000L) // Example: Change time to 4 hours
+        val newTime = Time(BigDecimal(4 * 60 * 60)) // Example: Change time to 4 hours
 
         val updatedKinematics = initialKinematics.withTime(newTime, TimeSolveFor.Pace)
         // Assertions
@@ -122,8 +127,8 @@ class KinematicsTest {
         // Assertion 3: The time in the updated Kinematics should be the result of using this expectedRoundedPace
         val expectedActualTime = Time.of(expectedRoundedPace, marathonDistance.distance)
         assertEquals(
-            expectedActualTime.milliseconds,
-            updatedKinematics.time.milliseconds,
+            expectedActualTime.seconds,
+            updatedKinematics.time.seconds,
             "Time should be recalculated based on the rounded pace and original distance",
         )
         assertEquals(
@@ -137,7 +142,7 @@ class KinematicsTest {
     fun `withTime when solving for Distance updates time and recalculates distance, pace remains`() {
         val initialKinematics = Kinematics.INIT // Marathon, 3h, TimePrecision.Seconds
         val initialPace = initialKinematics.pace // Pace of 3h over Marathon, rounded to seconds precision
-        val newTime = Time(2 * 60 * 60 * 1000L) // Example: Change time to 2 hours
+        val newTime = Time(BigDecimal(2 * 60 * 60)) // Example: Change time to 2 hours
         val updatedKinematics = initialKinematics.withTime(newTime, TimeSolveFor.Distance)
         val expectedNewDistance = Distance.of(newTime, initialPace)
 
@@ -150,7 +155,7 @@ class KinematicsTest {
         assertEquals(initialPace, updatedKinematics.pace, "Pace should remain unchanged")
 
         // Expected new distance: Distance covered in 2 hours at the "3h/Marathon" pace
-        assertEquals(expectedNewDistance.millimeters, updatedKinematics.distance.distance.millimeters, "Distance should be recalculated")
+        assertEquals(expectedNewDistance.meters, updatedKinematics.distance.distance.meters, "Distance should be recalculated")
     }
 
     @Test
@@ -160,9 +165,19 @@ class KinematicsTest {
         val updatedKinematics = initialKinematics.withDistance(newDistance, DistanceSolveFor.Pace)
         val expectedNewPace = Pace.of(initialKinematics.time, newDistance.distance)
         assertEquals(expectedNewPace, updatedKinematics.pace, "Pace should be recalculated")
-        assertEquals(initialKinematics.time, updatedKinematics.time, "Time should remain unchanged")
+        assertTrue(initialKinematics.time.seconds.normalizedEquals(updatedKinematics.time.seconds), "Time should remain unchanged")
         assertEquals(newDistance, updatedKinematics.distance, "Distance should be updated")
-        assertEquals(Pace.of(8, 32, 0, TimePrecision.Seconds, PaceUnit.PerKilometre), updatedKinematics.pace.roundTo(TimePrecision.Seconds))
+        assertTrue(
+            Pace
+                .of(
+                    8,
+                    32,
+                    0,
+                    TimePrecision.Seconds,
+                    PaceUnit.PerKilometre,
+                ).secondsPerKilometer
+                .normalizedEquals(updatedKinematics.pace.roundTo(TimePrecision.Seconds).secondsPerKilometer),
+        )
     }
 
     @Test
@@ -192,7 +207,11 @@ class KinematicsTest {
         val updatedKinematics = initialKinematics.withSpeed(newSpeed, PaceSolveFor.Time)
 
         val expectedNewPace = Pace.of(6, 0, 0, TimePrecision.Seconds, PaceUnit.PerKilometre)
-        assertEquals(expectedNewPace, updatedKinematics.pace.roundTo(initialKinematics.precision), "Pace should be recalculated")
+        assertEquals(
+            expectedNewPace,
+            updatedKinematics.pace.roundTo(initialKinematics.precision),
+            "Pace should be recalculated",
+        )
 
         val expectedNewTime = Time.of(updatedKinematics.pace.roundTo(initialKinematics.precision), initialKinematics.distance.distance)
         assertEquals(expectedNewTime, updatedKinematics.time, "Time should be recalculated")

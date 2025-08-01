@@ -1,34 +1,53 @@
 package me.fetsh.pacecalculator.domain
 
+import me.fetsh.pacecalculator.utils.UnitConversions
+import java.math.BigDecimal
+
 enum class SpeedUnit {
     KmpH,
     MpH,
 }
 
-@JvmInline
-value class Speed(
-    val metersPerSecond: Double,
-) {
+data class Speed(
+    val metersPerSecond: BigDecimal,
+) : BigDecimalBased {
     init {
-        require(metersPerSecond > 0) { "Speed must be non-negative or zero, got: $metersPerSecond" }
+        require(metersPerSecond > BigDecimal.ZERO) { "Speed must be non-negative or zero, got: $metersPerSecond" }
     }
 
-    val kilometersPerHour: Double
-        get() = metersPerSecond * METERS_PER_SECOND_TO_KILOMETERS_PER_HOUR
+    override fun getValue(): BigDecimal = metersPerSecond
 
-    val milesPerHour: Double
-        get() = metersPerSecond * METERS_PER_SECOND_TO_MILES_PER_HOUR
+    override fun equals(other: Any?): Boolean = isSameValueAs(other)
 
-    override fun toString(): String = "%.2f m/s".format(metersPerSecond)
+    override fun hashCode(): Int = normalizedHash()
+
+    val kilometersPerHour: BigDecimal
+        get() = metersPerSecond.multiply(UnitConversions.METERS_PER_SECOND_TO_KILOMETERS_PER_HOUR)
+
+    val milesPerHour: BigDecimal
+        get() = metersPerSecond.multiply(UnitConversions.METERS_PER_SECOND_TO_MILES_PER_HOUR)
+
+//    override fun toString(): String = "%.2f m/s".format(metersPerSecond)
 
     companion object {
-        private const val METERS_PER_SECOND_TO_KILOMETERS_PER_HOUR = 3.6
-        private const val METERS_PER_SECOND_TO_MILES_PER_HOUR = 2.23693629205
-        private const val KILOMETERS_PER_HOUR_TO_METERS_PER_SECOND = 1 / METERS_PER_SECOND_TO_KILOMETERS_PER_HOUR
-        private const val MILES_PER_HOUR_TO_METERS_PER_SECOND = 1 / METERS_PER_SECOND_TO_MILES_PER_HOUR
+        fun of(pace: Pace): Speed {
+            require(pace.secondsPerKilometer > BigDecimal.ZERO) { "Pace must be positive" }
 
-        fun fromKilometersPerHour(kilometersPerHour: Double): Speed = Speed(kilometersPerHour * KILOMETERS_PER_HOUR_TO_METERS_PER_SECOND)
+            return UnitConversions.METERS_IN_KILOMETER
+                .divide(pace.secondsPerKilometer, UnitConversions.TIME_CALCULATION_PRECISION)
+                .let(::Speed)
+        }
 
-        fun fromMilesPerHour(milesPerHour: Double): Speed = Speed(milesPerHour * MILES_PER_HOUR_TO_METERS_PER_SECOND)
+        fun fromKilometersPerHour(kilometersPerHour: Double): Speed =
+            kilometersPerHour
+                .let(BigDecimal::valueOf)
+                .multiply(UnitConversions.KILOMETERS_PER_HOUR_TO_METERS_PER_SECOND, UnitConversions.TIME_CALCULATION_PRECISION)
+                .let(::Speed)
+
+        fun fromMilesPerHour(milesPerHour: Double): Speed =
+            milesPerHour
+                .let(BigDecimal::valueOf)
+                .multiply(UnitConversions.MILES_PER_HOUR_TO_METERS_PER_SECOND)
+                .let(::Speed)
     }
 }
