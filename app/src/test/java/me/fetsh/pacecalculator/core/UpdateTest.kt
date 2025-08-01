@@ -1,18 +1,19 @@
 package me.fetsh.pacecalculator.core
 
 import com.google.common.truth.Truth.assertThat
-import me.fetsh.pacecalculator.domain.Distance
 import me.fetsh.pacecalculator.domain.DistanceSolveFor
 import me.fetsh.pacecalculator.domain.DistanceUnit
 import me.fetsh.pacecalculator.domain.Kinematics
 import me.fetsh.pacecalculator.domain.Pace
 import me.fetsh.pacecalculator.domain.PaceSolveFor
+import me.fetsh.pacecalculator.domain.PaceUnit
 import me.fetsh.pacecalculator.domain.PlainDistance
 import me.fetsh.pacecalculator.domain.Speed
 import me.fetsh.pacecalculator.domain.SpeedUnit
 import me.fetsh.pacecalculator.domain.Time
 import me.fetsh.pacecalculator.domain.TimeSolveFor
 import org.junit.jupiter.api.Test
+import java.math.BigDecimal
 
 class UpdateTest {
     @Test
@@ -36,7 +37,7 @@ class UpdateTest {
         val initialKinematics = Kinematics.INIT
         val initialModel = Model(kinematics = initialKinematics, speedUnit = SpeedUnit.KmpH)
 
-        val newTime = Time.fromMinutes(120)
+        val newTime = Time.fromMinutes(BigDecimal(120))
         val msg = Msg.TimeChanged(value = newTime)
 
         val newKinematics = initialKinematics.withTime(newTime, TimeSolveFor.Pace)
@@ -52,7 +53,7 @@ class UpdateTest {
         val initialKinematics = Kinematics.INIT
         val initialModel = Model(kinematics = initialKinematics, speedUnit = SpeedUnit.KmpH)
 
-        val newPace = Pace.of(Time.fromMinutes(5), Distance.of(1.0, DistanceUnit.Kilometer))
+        val newPace = Pace.of(5, 0, 0, PaceUnit.PerKilometre)
         val msg = Msg.PaceChanged(value = newPace)
 
         val newKinematics = initialKinematics.withPace(newPace, PaceSolveFor.Time)
@@ -68,14 +69,15 @@ class UpdateTest {
         val initialKinematics = Kinematics.INIT
         val initialModel = Model(kinematics = initialKinematics, speedUnit = SpeedUnit.KmpH)
 
-        val speed = Speed(3.5)
+        val speed = Speed(BigDecimal(3.5))
         val msg = Msg.SpeedChanged(value = speed, speedUnit = SpeedUnit.KmpH)
 
         val newKinematics = initialKinematics.withSpeed(speed, PaceSolveFor.Time)
 
         val (newModel, effects) = update(msg, initialModel)
 
-        assertThat(newModel.kinematics.speed.metersPerSecond).isWithin(0.0001).of(newKinematics.speed.metersPerSecond)
+        assertThat(newModel.kinematics.speed.metersPerSecond).isEqualTo(newKinematics.speed.metersPerSecond)
+//        isWithin(0.0001).of(newKinematics.speed.metersPerSecond)
         assertThat(effects).isEmpty()
     }
 

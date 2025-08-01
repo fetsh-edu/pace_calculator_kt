@@ -1,59 +1,69 @@
 package me.fetsh.pacecalculator.domain
 
+import me.fetsh.pacecalculator.utils.UnitConversions
 import java.math.BigDecimal
-import java.math.RoundingMode
-import kotlin.math.roundToLong
 
 enum class SystemOfUnits { Metric, Imperial }
 
 enum class DistanceUnit(
     val system: SystemOfUnits,
     val code: String,
-    val millimetersPerUnit: Int,
 ) {
-    Meter(SystemOfUnits.Metric, "m", 1_000),
-    Kilometer(SystemOfUnits.Metric, "km", 1_000_000),
-    Mile(SystemOfUnits.Imperial, "mi", 1_609_344),
+    Meter(SystemOfUnits.Metric, "m"),
+    Kilometer(SystemOfUnits.Metric, "km"),
+    Mile(SystemOfUnits.Imperial, "mi"),
     ;
 
     val isMetric get() = system == SystemOfUnits.Metric
 }
 
-@JvmInline
-value class Distance(
-    val millimeters: Long,
-) {
+data class Distance(
+    val meters: BigDecimal,
+) : BigDecimalBased {
     init {
-        require(millimeters >= 0) { "Distance cannot be negative" }
+        require(meters >= BigDecimal.ZERO) { "Distance cannot be negative" }
     }
 
-    fun to(unit: DistanceUnit): Double = millimeters / unit.millimetersPerUnit.toDouble()
+    override fun getValue(): BigDecimal = meters
+
+    override fun equals(other: Any?): Boolean = isSameValueAs(other)
+
+    override fun hashCode(): Int = normalizedHash()
+
+    fun to(unit: DistanceUnit): BigDecimal =
+        when (unit) {
+            DistanceUnit.Meter -> meters
+            DistanceUnit.Kilometer -> meters.divide(UnitConversions.METERS_IN_KILOMETER, UnitConversions.CALCULATION_PRECISION)
+            DistanceUnit.Mile -> meters.divide(UnitConversions.METERS_IN_MILE, UnitConversions.CALCULATION_PRECISION)
+        }
 
     companion object {
         fun of(
             amount: Double,
             unit: DistanceUnit,
-        ): Distance = Distance((amount * unit.millimetersPerUnit).roundToLong())
+        ): Distance = of(BigDecimal.valueOf(amount), unit)
+
+        fun of(
+            amount: BigDecimal,
+            unit: DistanceUnit,
+        ): Distance =
+            when (unit) {
+                DistanceUnit.Meter -> Distance(amount)
+                DistanceUnit.Kilometer ->
+                    Distance(
+                        amount.multiply(UnitConversions.METERS_IN_KILOMETER, UnitConversions.CALCULATION_PRECISION),
+                    )
+                DistanceUnit.Mile -> Distance(amount.multiply(UnitConversions.METERS_IN_MILE, UnitConversions.CALCULATION_PRECISION))
+            }
 
         fun of(
             time: Time,
             pace: Pace,
-        ): Distance {
-            require(pace.microsecondsPerKilometer > 0) { "Pace must be positive" }
-
-            val totalMicroseconds = BigDecimal(time.milliseconds).multiply(BigDecimal(1_000))
-            val kilometers =
-                totalMicroseconds
-                    .divide(BigDecimal(pace.microsecondsPerKilometer), 9, RoundingMode.HALF_UP)
-
-            val millimeters =
-                kilometers
-                    .multiply(BigDecimal(MILLIMETERS_IN_KILOMETER))
-                    .setScale(0, RoundingMode.HALF_UP)
-                    .longValueExactSafe()
-
-            return Distance(millimeters)
-        }
+        ): Distance =
+            time
+                .seconds
+                .divide(pace.secondsPerKilometer, UnitConversions.CALCULATION_PRECISION)
+                .let { of(it, DistanceUnit.Kilometer) }
     }
 }
 
@@ -67,16 +77,16 @@ data class PlainDistance(
 ) : DistanceExtended {
     override val distance: Distance = Distance.of(amount, unit)
 
-    companion object {
-        fun of(
-            millimeters: Long,
-            distanceUnit: DistanceUnit,
-        ): PlainDistance =
-            PlainDistance(
-                amount = millimeters / distanceUnit.millimetersPerUnit.toDouble(),
-                unit = distanceUnit,
-            )
-    }
+//    companion object {
+//        fun of(
+//            millimeters: Long,
+//            distanceUnit: DistanceUnit,
+//        ): PlainDistance =
+//            PlainDistance(
+//                amount = millimeters / distanceUnit.millimetersPerUnit.toDouble(),
+//                unit = distanceUnit,
+//            )
+//    }
 }
 
 data class NakedDistance(

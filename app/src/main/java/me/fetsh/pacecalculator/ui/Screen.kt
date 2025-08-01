@@ -35,6 +35,7 @@ import me.fetsh.pacecalculator.domain.Speed
 import me.fetsh.pacecalculator.domain.Time
 import me.fetsh.pacecalculator.domain.TimeParts
 import me.fetsh.pacecalculator.domain.TimePrecision
+import java.math.BigDecimal
 
 /**
  * Playground screen wiring domain inputs (Distance, Pace, Time, Speed) to the ViewModel.
@@ -213,7 +214,7 @@ fun Screen(viewModel: PaceCalculatorViewModel = viewModel()) {
                     .toString(),
             onValueChange = {
                 it.toDoubleOrNull()?.let { spd ->
-                    viewModel.processMessage(Msg.SpeedChanged(Speed(spd), uiState.speedUnit))
+                    viewModel.processMessage(Msg.SpeedChanged(Speed(BigDecimal.valueOf(spd)), uiState.speedUnit))
                 }
             },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
